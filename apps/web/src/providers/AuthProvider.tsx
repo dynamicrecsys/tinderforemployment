@@ -21,37 +21,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const refreshAuth = useCallback(async () => {
+  const fetchUser = useCallback(async (t: string) => {
     try {
-      const res = await apiFetch<AuthResponse>('/auth/refresh', { method: 'POST' });
-      setToken(res.token);
+      const res = await apiFetch<{ user: User; profile: unknown }>('/profile/me', { token: t });
       setUser(res.user);
+      setToken(t);
     } catch {
+      // Token invalid, clear everything
       setToken(null);
       setUser(null);
-    } finally {
-      setLoading(false);
+      localStorage.removeItem('token');
     }
   }, []);
 
+  const refreshAuth = useCallback(async () => {
+    const t = token || localStorage.getItem('token');
+    if (t) {
+      await fetchUser(t);
+    }
+  }, [token, fetchUser]);
+
   useEffect(() => {
-    // Try to restore session on mount
     const savedToken = localStorage.getItem('token');
     if (savedToken) {
-      setToken(savedToken);
-      // Fetch fresh user data
-      apiFetch<{ user: User; profile: unknown }>('/profile/me', { token: savedToken })
-        .then(res => {
-          setUser(res.user);
-          setLoading(false);
-        })
-        .catch(() => {
-          refreshAuth();
-        });
+      fetchUser(savedToken).finally(() => setLoading(false));
     } else {
-      refreshAuth();
+      setLoading(false);
     }
-  }, [refreshAuth]);
+  }, [fetchUser]);
 
   const sendOtp = async (phone: string) => {
     await apiFetch('/auth/send-otp', {

@@ -10,16 +10,13 @@ import LocationGate from '@/components/layout/LocationGate';
 
 export default function WorkerOnboarding() {
   const { token, refreshAuth } = useAuth();
-  const { lat, lng, hasLocation } = useLocation();
+  const { lat, lng, hasLocation, requestLocation } = useLocation();
   const router = useRouter();
 
+  const [step, setStep] = useState(1);
   const [name, setName] = useState('');
-  const [skills, setSkills] = useState('');
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [experienceYears, setExperienceYears] = useState(0);
-  const [preferredWorkType, setPreferredWorkType] = useState<string>('any');
-  const [bio, setBio] = useState('');
-  const [locationText, setLocationText] = useState('');
+  const [preferredWorkType, setPreferredWorkType] = useState<string>('');
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -30,6 +27,10 @@ export default function WorkerOnboarding() {
       .catch(console.error);
   }, []);
 
+  useEffect(() => {
+    if (!hasLocation) requestLocation();
+  }, [hasLocation, requestLocation]);
+
   const toggleCategory = (id: string) => {
     setSelectedCategories(prev =>
       prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]
@@ -37,11 +38,6 @@ export default function WorkerOnboarding() {
   };
 
   const handleSubmit = async () => {
-    if (!name || !skills || selectedCategories.length === 0 || !locationText) {
-      setError('Please fill in all required fields');
-      return;
-    }
-
     setLoading(true);
     setError('');
     try {
@@ -50,51 +46,62 @@ export default function WorkerOnboarding() {
         token: token!,
         body: JSON.stringify({
           name,
-          skills: skills.split(',').map(s => s.trim()).filter(Boolean),
+          skills: [],
           categoryIds: selectedCategories,
-          experienceYears,
           preferredWorkType,
-          bio: bio || undefined,
-          locationLat: lat!,
-          locationLng: lng!,
-          locationText,
+          locationLat: lat || 19.076,
+          locationLng: lng || 72.877,
         }),
       });
       await refreshAuth();
       router.replace('/swipe');
     } catch (err: any) {
       setError(err.message || 'Failed to create profile');
-    } finally {
       setLoading(false);
     }
   };
 
-  if (!hasLocation) return <LocationGate />;
-
   return (
-    <div className="min-h-screen px-6 py-8">
-      <h1 className="text-2xl font-bold mb-6">Create your profile</h1>
+    <div className="min-h-screen flex flex-col justify-center px-6">
+      {/* Progress */}
+      <div className="flex gap-2 mb-8">
+        {[1, 2, 3].map(s => (
+          <div key={s} className={`h-1.5 flex-1 rounded-full ${s <= step ? 'bg-primary-500' : 'bg-gray-200'}`} />
+        ))}
+      </div>
 
-      <div className="space-y-5">
+      {step === 1 && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
-          <input className="input-field" value={name} onChange={e => setName(e.target.value)} placeholder="Your name" />
+          <h1 className="text-2xl font-bold mb-2">What's your name?</h1>
+          <p className="text-gray-500 mb-6">This is how employers will see you</p>
+          <input
+            className="input-field text-lg"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            placeholder="Enter your full name"
+            autoFocus
+          />
+          <button
+            className="btn-primary w-full mt-6"
+            disabled={!name.trim()}
+            onClick={() => setStep(2)}
+          >
+            Next
+          </button>
         </div>
+      )}
 
+      {step === 2 && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Skills * (comma separated)</label>
-          <input className="input-field" value={skills} onChange={e => setSkills(e.target.value)} placeholder="e.g. Painting, Plumbing, Driving" />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Work Categories *</label>
-          <div className="flex flex-wrap gap-2">
+          <h1 className="text-2xl font-bold mb-2">What work do you do?</h1>
+          <p className="text-gray-500 mb-6">Select one or more categories</p>
+          <div className="flex flex-wrap gap-2 max-h-[50vh] overflow-y-auto">
             {categories.map(cat => (
               <button
                 key={cat.id}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                className={`px-4 py-2.5 rounded-full text-sm font-medium transition-all ${
                   selectedCategories.includes(cat.id)
-                    ? 'bg-primary-500 text-white'
+                    ? 'bg-primary-500 text-white scale-105'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
                 onClick={() => toggleCategory(cat.id)}
@@ -103,46 +110,57 @@ export default function WorkerOnboarding() {
               </button>
             ))}
           </div>
+          <div className="flex gap-3 mt-6">
+            <button className="btn-outline flex-1" onClick={() => setStep(1)}>Back</button>
+            <button
+              className="btn-primary flex-1"
+              disabled={selectedCategories.length === 0}
+              onClick={() => setStep(3)}
+            >
+              Next
+            </button>
+          </div>
         </div>
+      )}
 
+      {step === 3 && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Experience (years)</label>
-          <input
-            type="number"
-            className="input-field"
-            value={experienceYears}
-            onChange={e => setExperienceYears(Number(e.target.value))}
-            min={0}
-            max={50}
-          />
+          <h1 className="text-2xl font-bold mb-2">Preferred work type?</h1>
+          <p className="text-gray-500 mb-6">What kind of shifts work best for you?</p>
+          <div className="space-y-3">
+            {[
+              { value: 'full_day', label: 'Full Day', desc: '8-10 hour shifts' },
+              { value: 'half_day', label: 'Half Day', desc: '4-5 hour shifts' },
+              { value: 'hourly', label: 'Hourly', desc: 'Pay by the hour' },
+              { value: 'any', label: 'Any', desc: "I'm flexible" },
+            ].map(opt => (
+              <button
+                key={opt.value}
+                className={`w-full p-4 rounded-xl text-left transition-all ${
+                  preferredWorkType === opt.value
+                    ? 'bg-primary-50 border-2 border-primary-500'
+                    : 'bg-gray-50 border-2 border-transparent hover:bg-gray-100'
+                }`}
+                onClick={() => setPreferredWorkType(opt.value)}
+              >
+                <p className="font-semibold">{opt.label}</p>
+                <p className="text-sm text-gray-500">{opt.desc}</p>
+              </button>
+            ))}
+          </div>
+          {error && <p className="text-red-500 text-sm mt-3">{error}</p>}
+          <div className="flex gap-3 mt-6">
+            <button className="btn-outline flex-1" onClick={() => setStep(2)}>Back</button>
+            <button
+              className="btn-primary flex-1"
+              disabled={!preferredWorkType || loading}
+              onClick={handleSubmit}
+            >
+              {loading ? 'Setting up...' : "Let's Go!"}
+            </button>
+          </div>
         </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Preferred Work Type</label>
-          <select className="input-field" value={preferredWorkType} onChange={e => setPreferredWorkType(e.target.value)}>
-            <option value="any">Any</option>
-            <option value="full_day">Full Day</option>
-            <option value="half_day">Half Day</option>
-            <option value="hourly">Hourly</option>
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Area / Locality *</label>
-          <input className="input-field" value={locationText} onChange={e => setLocationText(e.target.value)} placeholder="e.g. Andheri West, Mumbai" />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Short Bio (optional)</label>
-          <textarea className="input-field" rows={3} value={bio} onChange={e => setBio(e.target.value)} placeholder="Tell employers about yourself" />
-        </div>
-
-        {error && <p className="text-red-500 text-sm">{error}</p>}
-
-        <button className="btn-primary w-full" onClick={handleSubmit} disabled={loading}>
-          {loading ? 'Creating profile...' : 'Start Finding Work'}
-        </button>
-      </div>
+      )}
     </div>
   );
 }

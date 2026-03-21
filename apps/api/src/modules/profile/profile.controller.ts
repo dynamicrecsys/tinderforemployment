@@ -13,14 +13,14 @@ import {
 const workerProfileSchema = z.object({
   name: z.string().min(1).max(100),
   photoUrl: z.string().optional(),
-  skills: z.array(z.string()).min(1),
-  categoryIds: z.array(z.string().uuid()),
-  experienceYears: z.number().int().min(0).max(50),
-  preferredWorkType: z.enum(['full_day', 'half_day', 'hourly', 'any']),
+  skills: z.array(z.string()).default([]),
+  categoryIds: z.array(z.string().uuid()).min(1),
+  experienceYears: z.number().int().min(0).max(50).default(0),
+  preferredWorkType: z.enum(['full_day', 'half_day', 'hourly', 'any']).default('any'),
   bio: z.string().max(500).optional(),
   locationLat: z.number().min(-90).max(90),
   locationLng: z.number().min(-180).max(180),
-  locationText: z.string().min(1).max(200),
+  locationText: z.string().max(200).default(''),
 });
 
 const employerProfileSchema = z.object({
@@ -30,7 +30,7 @@ const employerProfileSchema = z.object({
   businessType: z.string().max(100).optional(),
   locationLat: z.number().min(-90).max(90),
   locationLng: z.number().min(-180).max(180),
-  locationText: z.string().min(1).max(200),
+  locationText: z.string().max(200).default(''),
 });
 
 const locationSchema = z.object({
