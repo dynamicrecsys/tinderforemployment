@@ -14,7 +14,8 @@ COPY apps/api ./apps/api
 # Install dependencies
 RUN npm install
 
-# Build API
+# Build shared package first, then API
+RUN npx tsc --project packages/shared/tsconfig.json
 RUN npx tsc --project apps/api/tsconfig.json
 
 # Railway provides PORT env var

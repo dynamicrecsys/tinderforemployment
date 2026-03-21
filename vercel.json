@@ -1,5 +1,5 @@
 {
-  "buildCommand": "cd apps/web && npm run build",
+  "buildCommand": "npx tsc --project packages/shared/tsconfig.json && cd apps/web && npm run build",
   "installCommand": "npm install",
   "framework": "nextjs",
   "outputDirectory": "apps/web/.next"
