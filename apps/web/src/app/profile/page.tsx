@@ -75,7 +75,7 @@ export default function ProfilePage() {
           </div>
         )}
 
-        <button className="btn-outline w-full text-red-500 border-red-300 hover:bg-red-50" onClick={logout}>
+        <button className="btn-outline w-full text-red-500 border-red-300 hover:bg-red-50" onClick={() => { logout(); window.location.href = '/login'; }}>
           Log Out
         </button>
       </div>

@@ -3,16 +3,13 @@ import { db } from '../../config/db';
 import {
   swipes, matches, jobListings, workerProfiles, employerProfiles, categories,
 } from '../../db/schema';
-import { distanceKm, boundingBox } from '../../utils/geo';
+import { distanceKm } from '../../utils/geo';
 import { FEED_PAGE_SIZE } from '@tfe/shared';
 
-// Get job feed for a worker (jobs near them, not yet swiped)
+// Get job feed for a worker (all active jobs, sorted by distance, excluding swiped)
 export async function getJobFeed(userId: string, radiusKm: number = 25, page: number = 0) {
-  // Get worker location
   const [worker] = await db.select().from(workerProfiles).where(eq(workerProfiles.userId, userId));
-  if (!worker || worker.locationLat === null || worker.locationLng === null) {
-    return [];
-  }
+  if (!worker) return [];
 
   // Get already-swiped job IDs
   const swipedRows = await db.select({ targetId: swipes.targetId })
@@ -20,11 +17,8 @@ export async function getJobFeed(userId: string, radiusKm: number = 25, page: nu
     .where(and(eq(swipes.swiperId, userId), eq(swipes.targetType, 'job')));
   const swipedIds = swipedRows.map(r => r.targetId);
 
-  // Bounding box pre-filter
-  const bbox = boundingBox(worker.locationLat, worker.locationLng, radiusKm);
-
-  // Query active jobs within bounding box
-  let query = db.select({
+  // Get all active jobs (no geo filter — show everything, sorted by distance)
+  const rows = await db.select({
     job: jobListings,
     employer: employerProfiles,
     category: categories,
@@ -34,22 +28,20 @@ export async function getJobFeed(userId: string, radiusKm: number = 25, page: nu
     .leftJoin(categories, eq(jobListings.categoryId, categories.id))
     .where(and(
       eq(jobListings.isActive, true),
-      sql`${jobListings.locationLat} BETWEEN ${bbox.minLat} AND ${bbox.maxLat}`,
-      sql`${jobListings.locationLng} BETWEEN ${bbox.minLng} AND ${bbox.maxLng}`,
       ...(swipedIds.length > 0 ? [not(inArray(jobListings.id, swipedIds))] : []),
     ))
-    .limit(FEED_PAGE_SIZE)
-    .offset(page * FEED_PAGE_SIZE);
+    .limit(50);
 
-  const rows = await query;
-
-  // Calculate exact distance and filter
+  // Calculate distance and sort
   return rows
     .map(row => {
-      const dist = distanceKm(
-        worker.locationLat!, worker.locationLng!,
-        row.job.locationLat!, row.job.locationLng!
-      );
+      let dist = 0;
+      if (worker.locationLat && worker.locationLng && row.job.locationLat && row.job.locationLng) {
+        dist = distanceKm(
+          worker.locationLat, worker.locationLng,
+          row.job.locationLat, row.job.locationLng
+        );
+      }
       return {
         id: row.job.id,
         title: row.job.title,
@@ -65,15 +57,14 @@ export async function getJobFeed(userId: string, radiusKm: number = 25, page: nu
         categoryNameHi: row.category?.nameHi || '',
       };
     })
-    .filter(j => j.distanceKm <= radiusKm)
-    .sort((a, b) => a.distanceKm - b.distanceKm);
+    .sort((a, b) => a.distanceKm - b.distanceKm)
+    .slice(page * FEED_PAGE_SIZE, (page + 1) * FEED_PAGE_SIZE);
 }
 
 // Get worker feed for an employer's specific job
 export async function getWorkerFeed(userId: string, jobId: string, page: number = 0) {
-  // Get the job to know its location and requirements
   const [job] = await db.select().from(jobListings).where(eq(jobListings.id, jobId));
-  if (!job || job.locationLat === null || job.locationLng === null) return [];
+  if (!job) return [];
 
   // Verify this job belongs to this employer
   const [employer] = await db.select().from(employerProfiles).where(eq(employerProfiles.userId, userId));
@@ -89,24 +80,23 @@ export async function getWorkerFeed(userId: string, jobId: string, page: number 
     ));
   const swipedIds = swipedRows.map(r => r.targetId);
 
-  const bbox = boundingBox(job.locationLat, job.locationLng, job.maxDistanceKm);
-
+  // Get all available workers (no geo filter)
   const workers = await db.select().from(workerProfiles)
     .where(and(
       eq(workerProfiles.isAvailable, true),
-      sql`${workerProfiles.locationLat} BETWEEN ${bbox.minLat} AND ${bbox.maxLat}`,
-      sql`${workerProfiles.locationLng} BETWEEN ${bbox.minLng} AND ${bbox.maxLng}`,
       ...(swipedIds.length > 0 ? [not(inArray(workerProfiles.id, swipedIds))] : []),
     ))
-    .limit(FEED_PAGE_SIZE)
-    .offset(page * FEED_PAGE_SIZE);
+    .limit(50);
 
   return workers
     .map(w => {
-      const dist = distanceKm(
-        job.locationLat!, job.locationLng!,
-        w.locationLat!, w.locationLng!
-      );
+      let dist = 0;
+      if (job.locationLat && job.locationLng && w.locationLat && w.locationLng) {
+        dist = distanceKm(
+          job.locationLat, job.locationLng,
+          w.locationLat, w.locationLng
+        );
+      }
       return {
         id: w.id,
         userId: w.userId,
@@ -119,8 +109,8 @@ export async function getWorkerFeed(userId: string, jobId: string, page: number 
         isAvailable: w.isAvailable,
       };
     })
-    .filter(w => w.distanceKm <= job.maxDistanceKm)
-    .sort((a, b) => a.distanceKm - b.distanceKm);
+    .sort((a, b) => a.distanceKm - b.distanceKm)
+    .slice(page * FEED_PAGE_SIZE, (page + 1) * FEED_PAGE_SIZE);
 }
 
 // Record a swipe and check for match
