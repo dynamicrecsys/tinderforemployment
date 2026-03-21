@@ -18,7 +18,9 @@ const httpServer = createServer(app);
 
 // Middleware
 app.use(cors({
-  origin: env.NODE_ENV === 'development' ? 'http://localhost:3000' : undefined,
+  origin: env.NODE_ENV === 'development'
+    ? 'http://localhost:3000'
+    : env.FRONTEND_URL || true,
   credentials: true,
 }));
 app.use(express.json());
@@ -46,8 +48,9 @@ async function start() {
   // Init Socket.io
   initSocketServer(httpServer);
 
-  httpServer.listen(env.API_PORT, () => {
-    console.log(`API server running on port ${env.API_PORT}`);
+  const port = env.PORT || env.API_PORT;
+  httpServer.listen(port, () => {
+    console.log(`API server running on port ${port}`);
   });
 }
 
