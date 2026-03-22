@@ -66,6 +66,7 @@ export interface JobListing {
 export interface JobCard {
   id: string;
   title: string;
+  description: string | null;
   employerName: string;
   employerPhoto: string | null;
   workType: WorkType;
