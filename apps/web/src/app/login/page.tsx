@@ -56,11 +56,13 @@ export default function LoginPage() {
               <span className="text-gray-500 font-medium bg-gray-100 px-3 py-3 rounded-xl">+91</span>
               <input
                 type="tel"
+                inputMode="numeric"
                 className="input-field"
                 placeholder="10 digit mobile number"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                 maxLength={10}
+                autoFocus
               />
             </div>
             {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
@@ -77,12 +79,14 @@ export default function LoginPage() {
             <h2 className="text-xl font-semibold mb-2">Enter OTP</h2>
             <p className="text-gray-500 text-sm mb-4">Sent to +91 {phone}</p>
             <input
-              type="text"
+              type="tel"
+              inputMode="numeric"
               className="input-field mb-4 text-center text-2xl tracking-widest"
               placeholder="------"
               value={otp}
               onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
               maxLength={6}
+              autoFocus
             />
             {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
             <button

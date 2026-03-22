@@ -11,11 +11,11 @@ const createJobSchema = z.object({
   payMin: z.number().int().positive(),
   payMax: z.number().int().positive(),
   payPeriod: z.enum(['per_hour', 'per_day', 'per_month']),
-  locationLat: z.number().min(-90).max(90),
-  locationLng: z.number().min(-180).max(180),
-  locationText: z.string().min(1).max(200),
-  maxDistanceKm: z.number().int().min(1).max(100).optional(),
-  slots: z.number().int().min(1).max(100).optional(),
+  locationLat: z.number().min(-90).max(90).default(19.076),
+  locationLng: z.number().min(-180).max(180).default(72.877),
+  locationText: z.string().max(200).default(''),
+  maxDistanceKm: z.number().int().min(1).max(100).default(25),
+  slots: z.number().int().min(1).max(100).default(1),
   expiresAt: z.string().optional(),
 });
 
