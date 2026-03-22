@@ -12,7 +12,7 @@ const SWIPE_THRESHOLD = 100;
 
 export default function SwipeCard({ children, onSwipe, isTop }: SwipeCardProps) {
   const x = useMotionValue(0);
-  const rotate = useTransform(x, [-200, 200], [-15, 15]);
+  const rotate = useTransform(x, [-200, 200], [-12, 12]);
   const likeOpacity = useTransform(x, [0, SWIPE_THRESHOLD], [0, 1]);
   const passOpacity = useTransform(x, [-SWIPE_THRESHOLD, 0], [1, 0]);
 
@@ -32,24 +32,24 @@ export default function SwipeCard({ children, onSwipe, isTop }: SwipeCardProps) 
       dragConstraints={{ left: 0, right: 0 }}
       dragElastic={0.7}
       onDragEnd={handleDragEnd}
-      animate={isTop ? {} : { scale: 0.95, y: 10 }}
+      animate={isTop ? {} : { scale: 0.96, y: 12 }}
       exit={{
-        x: x.get() > 0 ? 300 : -300,
+        x: x.get() > 0 ? 400 : -400,
         opacity: 0,
-        transition: { duration: 0.3 },
+        transition: { duration: 0.4 },
       }}
     >
       {/* Like / Pass indicators */}
       {isTop && (
         <>
           <motion.div
-            className="absolute top-6 left-6 z-10 px-4 py-2 border-4 border-green-500 text-green-500 font-bold text-2xl rounded-lg -rotate-12"
+            className="absolute top-6 left-5 z-20 px-5 py-2 bg-green-500 text-white font-black text-xl rounded-xl -rotate-12 shadow-lg"
             style={{ opacity: likeOpacity }}
           >
             LIKE
           </motion.div>
           <motion.div
-            className="absolute top-6 right-6 z-10 px-4 py-2 border-4 border-red-500 text-red-500 font-bold text-2xl rounded-lg rotate-12"
+            className="absolute top-6 right-5 z-20 px-5 py-2 bg-red-500 text-white font-black text-xl rounded-xl rotate-12 shadow-lg"
             style={{ opacity: passOpacity }}
           >
             NOPE
